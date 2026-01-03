@@ -13,160 +13,113 @@ const Renderer = {
 
     renderMainPage() {
         const samplesHTML = SampleSlides.templates.map((sample, index) => `
-            <div class="sample-card bg-gray-800 rounded-xl overflow-hidden cursor-pointer border border-gray-700 hover:border-blue-500"
-                onclick="SampleSlides.loadSample(${index})">
-                <div class="sample-preview h-40 bg-gray-900" data-sample-index="${index}"></div>
-                <div class="p-4">
-                    <h3 class="font-bold text-lg">${sample.name}</h3>
-                    <p class="text-sm text-gray-400 mt-1">${sample.description}</p>
-                    <p class="text-xs text-gray-500 mt-2">${sample.slides.length} slides • ${sample.slideSize.name}</p>
+            <div class="col">
+                <div class="card sample-card h-100" onclick="SampleSlides.loadSample(${index})">
+                    <div class="sample-preview" data-sample-index="${index}"></div>
+                    <div class="card-body">
+                        <h5 class="card-title mb-1">${sample.name}</h5>
+                        <p class="card-text text-secondary mb-2" style="font-size: .9rem;">${sample.description}</p>
+                        <div class="text-secondary" style="font-size: .8rem;">${sample.slides.length} slides • ${sample.slideSize.name}</div>
+                    </div>
                 </div>
             </div>
         `).join('');
 
         return `
-            <div class="min-h-screen flex flex-col items-center p-8">
-                <div class="text-center mb-12 pt-8">
-                    <h1 class="text-6xl font-bold bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent mb-4">
-                        WebSlider
-                    </h1>
-                    <p class="text-xl text-gray-400">Create stunning slides with Web technologies</p>
+            <div class="container py-5">
+                <div class="text-center mb-5 pt-2">
+                    <h1 class="display-3 fw-bold gradient-text mb-2">WebSlider</h1>
+                    <p class="lead text-secondary">Create stunning slides with Web technologies</p>
                 </div>
-                
-                <div class="flex flex-col sm:flex-row gap-6 mb-16">
-                    <button onclick="EventHandlers.onImportProject()"
-                        class="group px-8 py-4 bg-gray-800 hover:bg-gray-700 rounded-xl font-semibold text-lg transition border border-gray-700 hover:border-gray-600 flex items-center gap-3">
-                        <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
-                        </svg>
+
+                <div class="d-flex gap-3 justify-content-center flex-wrap mb-5">
+                    <button onclick="EventHandlers.onImportProject()" class="btn btn-outline-light px-4 py-2">
+                        <span class="me-2">⬆</span>
                         Import Project
                     </button>
-                    
-                    <button onclick="Modal.show('newProject')"
-                        class="group px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 rounded-xl font-semibold text-lg transition flex items-center gap-3 shadow-lg shadow-blue-500/25">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
+
+                    <button onclick="Modal.show('newProject')" class="btn btn-primary px-4 py-2">
+                        <span class="me-2">＋</span>
                         Create New Project
                     </button>
                 </div>
-                
-                <div class="w-full max-w-5xl">
-                    <h2 class="text-2xl font-bold mb-6 text-center text-gray-300">Or start with a template</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+                <div class="mx-auto" style="max-width: 1100px;">
+                    <h2 class="h4 fw-semibold text-center text-secondary mb-3">Or start with a template</h2>
+                    <div class="row row-cols-1 row-cols-md-3 g-3">
                         ${samplesHTML}
                     </div>
                 </div>
-                
-                <p class="mt-12 text-gray-600 text-sm">Supports .webslider project files</p>
+
+                <div class="text-center text-secondary mt-5" style="font-size:.9rem;">Supports .webslider project files</div>
             </div>
-            
+
             ${Modal.renderNewProjectModal()}
         `;
     },
 
     renderSliderPage() {
         const { width, height, name } = AppState.project.slideSize;
-        const maxWidth = Math.min(window.innerWidth - 100, 900);
-        const maxHeight = window.innerHeight - 250;
+        const maxWidth = Math.min(window.innerWidth - 48, 980);
+        const maxHeight = window.innerHeight - 220;
         const scaled = Utils.calculateScaledSize(width, height, maxWidth, maxHeight);
 
         const slidesHTML = AppState.project.slides.map((slide, index) => `
-            <div class="flex flex-col items-center gap-3 flex-shrink-0">
-                <div class="relative group">
-                    <div class="absolute -top-8 left-0 text-sm text-gray-400 font-medium">
+            <div class="d-flex flex-column align-items-center gap-2 mb-4">
+                <div class="position-relative group">
+                    <div class="position-absolute" style="top:-28px;left:0;font-size:.85rem;color:#9ca3af;font-weight:600;">
                         Slide ${index + 1}
                     </div>
-                    
-                    <div class="slide-frame rounded-lg" 
-                        style="width: ${scaled.width}px; height: ${scaled.height}px;"
-                        data-slide-id="${slide.id}">
-                    </div>
-                    
-                    <div class="absolute -right-12 top-1/2 -translate-y-1/2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        ${index > 0 ? `
-                            <button onclick="SlideManager.moveSlide('${slide.id}', 'up')" 
-                                class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition" title="Move up">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
-                                </svg>
-                            </button>
-                        ` : ''}
-                        ${index < AppState.project.slides.length - 1 ? `
-                            <button onclick="SlideManager.moveSlide('${slide.id}', 'down')" 
-                                class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition" title="Move down">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
-                                </svg>
-                            </button>
-                        ` : ''}
-                        <button onclick="SlideManager.removeSlide('${slide.id}')" 
-                            class="p-2 bg-red-600 hover:bg-red-500 rounded-lg transition" title="Delete">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                            </svg>
-                        </button>
+
+                    <div class="slide-frame" style="width:${scaled.width}px;height:${scaled.height}px;" data-slide-id="${slide.id}"></div>
+
+                    <div class="slide-controls position-absolute top-50 translate-middle-y" style="right:-54px;">
+                        <div class="d-flex flex-column gap-2 opacity-0 group-hover-opacity-100 transition">
+                            ${index > 0 ? `<button onclick="SlideManager.moveSlide('${slide.id}', 'up')" class="btn btn-sm btn-secondary" title="Move up">▲</button>` : ''}
+                            ${index < AppState.project.slides.length - 1 ? `<button onclick="SlideManager.moveSlide('${slide.id}', 'down')" class="btn btn-sm btn-secondary" title="Move down">▼</button>` : ''}
+                            <button onclick="SlideManager.removeSlide('${slide.id}')" class="btn btn-sm btn-danger" title="Delete">✕</button>
+                        </div>
                     </div>
                 </div>
-                <p class="text-xs text-gray-500 truncate max-w-[200px]" title="${slide.source}">
+
+                <div class="text-secondary text-truncate" style="max-width: 260px; font-size:.8rem;" title="${slide.source}">
                     ${slide.type === 'url' ? '🔗 ' : '📄 '}${slide.source || 'HTML Content'}
-                </p>
+                </div>
             </div>
         `).join('');
 
         return `
-            <nav class="fixed top-0 left-0 right-0 bg-gray-800/95 backdrop-blur border-b border-gray-700 z-40">
-                <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <button onclick="EventHandlers.goToMainPage()" 
-                            class="p-2 hover:bg-gray-700 rounded-lg transition" title="Back">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                            </svg>
-                        </button>
+            <nav class="navbar navbar-dark bg-dark border-bottom border-secondary fixed-top">
+                <div class="container-fluid">
+                    <div class="d-flex align-items-center gap-3">
+                        <button onclick="EventHandlers.goToMainPage()" class="btn btn-outline-light btn-sm" title="Back">←</button>
                         <div>
-                            <h1 class="font-bold text-lg">${AppState.project.name}</h1>
-                            <p class="text-xs text-gray-400">${name} • ${width}×${height}px • ${AppState.project.slides.length} slides</p>
+                            <div class="fw-semibold">${AppState.project.name}</div>
+                            <div class="text-secondary" style="font-size:.8rem;">${name} • ${width}×${height}px • ${AppState.project.slides.length} slides</div>
                         </div>
                     </div>
-                    
-                    <div class="flex items-center gap-3">
-                        <button onclick="ExportManager.exportProject()"
-                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg font-medium transition flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/>
-                            </svg>
-                            Export
-                        </button>
-                        <button onclick="ExportManager.exportAsPDF()"
-                            class="px-4 py-2 bg-red-600 hover:bg-red-500 rounded-lg font-medium transition flex items-center gap-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-                            </svg>
-                            PDF
-                        </button>
+
+                    <div class="d-flex align-items-center gap-2">
+                        <button onclick="ExportManager.exportProject()" class="btn btn-outline-light btn-sm">Export (.webslider)</button>
+                        <button onclick="ExportManager.exportAsPDF()" class="btn btn-danger btn-sm">Export PDF</button>
                     </div>
                 </div>
             </nav>
-            
-            <div class="pt-24 pb-8 px-4 min-h-screen">
-                <div class="flex flex-col items-center gap-12 py-8">
+
+            <div class="container-fluid" style="padding-top: 84px; padding-bottom: 40px;">
+                <div class="d-flex flex-column align-items-center">
                     ${slidesHTML}
-                    
-                    <button onclick="Modal.show('addSlide')"
-                        class="add-slide-btn rounded-lg flex items-center justify-center cursor-pointer"
-                        style="width: ${scaled.width}px; height: ${scaled.height}px;">
-                        <div class="text-center text-gray-400">
-                            <svg class="w-16 h-16 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
-                            <p class="text-lg font-medium">Add New Slide</p>
-                            <p class="text-sm mt-1">Upload HTML or enter URL</p>
+
+                    <button onclick="Modal.show('addSlide')" class="add-slide-btn" style="width:${scaled.width}px;height:${scaled.height}px;">
+                        <div class="text-center text-secondary">
+                            <div style="font-size:64px; line-height: 1;">+</div>
+                            <div class="fw-semibold">Add New Slide</div>
+                            <div style="font-size:.9rem;">Upload HTML or enter URL</div>
                         </div>
                     </button>
                 </div>
             </div>
-            
+
             ${Modal.renderAddSlideModal()}
         `;
     },
