@@ -1,0 +1,50 @@
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #1f2937; }
+::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+.modal-overlay { transition: opacity 0.3s ease; }
+.modal-content { transition: transform 0.3s ease, opacity 0.3s ease; }
+.modal-hidden { opacity: 0; pointer-events: none; }
+.modal-hidden .modal-content { transform: scale(0.95); opacity: 0; }
+
+.slide-frame { 
+    background: white;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    overflow: hidden;
+}
+
+.slide-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.add-slide-btn {
+    border: 3px dashed #4b5563;
+    transition: all 0.3s ease;
+}
+
+.add-slide-btn:hover {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.sample-card {
+    transition: all 0.3s ease;
+}
+
+.sample-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+}
+
+.sample-preview {
+    position: relative;
+    overflow: hidden;
+}
+
+.sample-preview iframe {
+    pointer-events: none;
+    transform-origin: top left;
+}
