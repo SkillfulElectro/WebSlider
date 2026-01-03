@@ -15,6 +15,7 @@ const ExportManager = {
             
             AppState.project = project;
             AppState.currentPage = 'slider';
+            AppState.selectedSlideId = project.slides.length > 0 ? project.slides[0].id : null;
             Renderer.render();
         } catch (error) {
             alert('Error importing project: ' + error.message);
@@ -41,21 +42,16 @@ const ExportManager = {
 
         const loadingDiv = document.createElement('div');
         loadingDiv.id = 'exportLoading';
-        loadingDiv.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:9999;color:#fff;';
+        loadingDiv.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.9);display:flex;align-items:center;justify-content:center;z-index:9999;color:#fff;';
         loadingDiv.innerHTML = `
             <div style="text-align:center;">
-                <div style="width:64px;height:64px;border:4px solid rgba(59,130,246,1);border-top-color:transparent;border-radius:999px;animation:spin 1s linear infinite;margin:0 auto 16px;"></div>
-                <p style="font-size:18px;" id="exportProgress">Exporting slide 1 of ${slides.length}...</p>
+                <div class="spinner-border text-primary mb-3" role="status" style="width:3rem;height:3rem;"></div>
+                <p style="font-size:18px;" id="exportProgress">Preparing slide 1 of ${slides.length}...</p>
             </div>
         `;
         document.body.appendChild(loadingDiv);
 
-        const style = document.createElement('style');
-        style.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
-        document.head.appendChild(style);
-
         const originalCaptureStyle = captureHost.getAttribute('style') || '';
-
         const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
         const sanitizeOklchColors = (doc, root) => {
@@ -77,72 +73,22 @@ const ExportManager = {
             };
 
             const props = [
-                ['color', 'color'],
-                ['backgroundColor', 'backgroundColor'],
-                ['borderTopColor', 'borderTopColor'],
-                ['borderRightColor', 'borderRightColor'],
-                ['borderBottomColor', 'borderBottomColor'],
-                ['borderLeftColor', 'borderLeftColor'],
-                ['outlineColor', 'outlineColor'],
-                ['textDecorationColor', 'textDecorationColor'],
-                ['caretColor', 'caretColor']
+                'color', 'backgroundColor', 'borderTopColor', 'borderRightColor',
+                'borderBottomColor', 'borderLeftColor', 'outlineColor', 
+                'textDecorationColor', 'caretColor'
             ];
 
-            const nodes = root.querySelectorAll('*');
-            nodes.forEach(el => {
+            root.querySelectorAll('*').forEach(el => {
                 const cs = win.getComputedStyle(el);
-                props.forEach(([csKey, styleKey]) => {
-                    const val = cs[csKey];
+                props.forEach(prop => {
+                    const val = cs[prop];
                     if (typeof val === 'string' && val.includes('oklch(')) {
-                        el.style[styleKey] = toRgb(val);
+                        el.style[prop] = toRgb(val);
                     }
                 });
-
-                if (el instanceof win.SVGElement) {
-                    const fill = cs.fill;
-                    const stroke = cs.stroke;
-                    if (typeof fill === 'string' && fill.includes('oklch(')) el.style.fill = toRgb(fill);
-                    if (typeof stroke === 'string' && stroke.includes('oklch(')) el.style.stroke = toRgb(stroke);
-                }
             });
 
             doc.body.removeChild(probe);
-        };
-
-        const captureIframeDocument = async (iframe) => {
-            await new Promise((resolve, reject) => {
-                const t = setTimeout(() => reject(new Error('Slide load timeout')), 12000);
-                const done = () => {
-                    clearTimeout(t);
-                    resolve();
-                };
-                if (iframe.contentDocument && iframe.contentDocument.readyState === 'complete') return done();
-                iframe.onload = done;
-                iframe.onerror = () => {
-                    clearTimeout(t);
-                    reject(new Error('Failed to load slide'));
-                };
-            });
-
-            const doc = iframe.contentDocument;
-            if (!doc || !doc.body) throw new Error('Slide document not accessible');
-
-            try {
-                if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
-            } catch {}
-
-            sanitizeOklchColors(doc, doc.body);
-            await wait(60);
-
-            return await html2canvas(doc.body, {
-                width,
-                height,
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#ffffff',
-                logging: false
-            });
         };
 
         try {
@@ -155,47 +101,42 @@ const ExportManager = {
 
                 captureHost.innerHTML = '';
 
-                let canvas;
+                const iframe = document.createElement('iframe');
+                iframe.style.cssText = `width:${width}px;height:${height}px;border:none;`;
+                captureHost.appendChild(iframe);
 
-                if (slide.type === 'html') {
-                    const iframe = document.createElement('iframe');
-                    iframe.style.cssText = `width:${width}px;height:${height}px;border:none;`;
-                    captureHost.appendChild(iframe);
+                const doc = iframe.contentDocument;
+                doc.open();
+                doc.write(slide.content);
+                doc.close();
 
-                    const doc = iframe.contentDocument;
-                    doc.open();
-                    doc.write(slide.content);
-                    doc.close();
+                await new Promise((resolve) => {
+                    const checkReady = () => {
+                        if (doc.readyState === 'complete') {
+                            resolve();
+                        } else {
+                            setTimeout(checkReady, 50);
+                        }
+                    };
+                    setTimeout(checkReady, 100);
+                });
 
-                    canvas = await captureIframeDocument(iframe);
-                } else {
-                    const iframe = document.createElement('iframe');
-                    iframe.style.cssText = `width:${width}px;height:${height}px;border:none;`;
-                    iframe.src = slide.source;
-                    captureHost.appendChild(iframe);
+                try {
+                    if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
+                } catch {}
 
-                    try {
-                        canvas = await captureIframeDocument(iframe);
-                    } catch (e) {
-                        captureHost.innerHTML = `
-                            <div style="width:${width}px;height:${height}px;display:flex;align-items:center;justify-content:center;background:#f3f4f6;">
-                                <div style="text-align:center;max-width:${Math.min(width - 80, 900)}px;padding:24px;">
-                                    <div style="font-size:18px;color:#111827;font-weight:600;">Unable to capture URL slide</div>
-                                    <div style="margin-top:8px;font-size:13px;color:#4b5563;">${slide.source}</div>
-                                    <div style="margin-top:10px;font-size:12px;color:#6b7280;">(Cross-origin pages cannot be exported as images)</div>
-                                </div>
-                            </div>
-                        `;
-                        await wait(30);
-                        canvas = await html2canvas(captureHost, {
-                            width,
-                            height,
-                            scale: 2,
-                            backgroundColor: '#ffffff',
-                            logging: false
-                        });
-                    }
-                }
+                sanitizeOklchColors(doc, doc.body);
+                await wait(100);
+
+                const canvas = await html2canvas(doc.body, {
+                    width,
+                    height,
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    backgroundColor: '#ffffff',
+                    logging: false
+                });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
                 pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
@@ -209,7 +150,6 @@ const ExportManager = {
             captureHost.innerHTML = '';
             captureHost.setAttribute('style', originalCaptureStyle);
             if (loadingDiv.parentNode) loadingDiv.parentNode.removeChild(loadingDiv);
-            if (style.parentNode) style.parentNode.removeChild(style);
         }
     }
 };

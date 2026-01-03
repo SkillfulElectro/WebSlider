@@ -6,6 +6,9 @@ const Modal = {
 
     hide(modalId) {
         AppState.modals[modalId] = false;
+        if (modalId === 'addSlide') {
+            AppState.editingSlideId = null;
+        }
         Renderer.render();
     },
 
@@ -61,35 +64,119 @@ const Modal = {
     renderAddSlideModal() {
         if (!AppState.modals.addSlide) return '';
 
+        const isEditing = AppState.editingSlideId !== null;
+        const title = isEditing ? 'Replace Slide Content' : 'Add New Slide';
+
         return `
             <div class="modal-overlay" onclick="Modal.hide('addSlide')">
                 <div class="modal-content" onclick="event.stopPropagation()">
-                    <h2 class="text-2xl font-bold mb-6 text-center">Add New Slide</h2>
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h5 class="mb-0">${title}</h5>
+                        <button class="btn btn-sm btn-outline-light" onclick="Modal.hide('addSlide')">✕</button>
+                    </div>
                     
-                    <div class="flex flex-col gap-6">
-                        <div class="upload-area" onclick="document.getElementById('htmlFileInput').click()">
-                            <svg class="w-12 h-12 mx-auto mb-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                            </svg>
-                            <p class="text-gray-300">Upload HTML File</p>
-                            <p class="text-sm text-gray-500 mt-1">Click to browse</p>
-                            <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none;" onchange="EventHandlers.onHtmlFileUpload(event)">
+                    <div class="upload-area mb-4" onclick="document.getElementById('htmlFileInput').click()">
+                        <div class="text-center py-4">
+                            <div class="upload-icon mb-3">
+                                <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto; opacity: 0.6;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                            </div>
+                            <p class="mb-1 fw-medium">Drop HTML file here or click to browse</p>
+                            <p class="text-secondary small mb-0">Supports .html and .htm files</p>
                         </div>
-                        
-                        <div class="divider">
-                            <hr><span>OR</span><hr>
-                        </div>
-                        
+                        <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none;" onchange="EventHandlers.onHtmlFileUpload(event)">
+                    </div>
+
+                    <div class="d-grid">
+                        <button onclick="Modal.hide('addSlide')" class="btn btn-outline-secondary">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    renderProjectSettingsModal() {
+        if (!AppState.modals.projectSettings) return '';
+
+        const presetsHTML = PRESET_SIZES.map((size, index) => {
+            const selected = size.name === AppState.project.slideSize.name ? 'selected' : '';
+            return `<option value="${index}" ${selected}>${size.name} (${size.width}×${size.height})</option>`;
+        }).join('');
+
+        return `
+            <div class="modal-overlay" onclick="Modal.hide('projectSettings')">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0">Project Settings</h5>
+                        <button class="btn btn-sm btn-outline-light" onclick="Modal.hide('projectSettings')">✕</button>
+                    </div>
+
+                    <div class="vstack gap-3">
                         <div>
-                            <label class="text-sm font-medium mb-2" style="display:block;">Web Page URL</label>
-                            <input type="url" id="slideUrl" placeholder="https://example.com/slide.html">
-                            <p class="text-xs text-gray-500 mt-2">Note: URL must allow iframe embedding</p>
+                            <label class="form-label">Project Name</label>
+                            <input class="form-control" type="text" id="editProjectName" value="${AppState.project.name}">
                         </div>
-                        
-                        <div class="flex gap-4">
-                            <button onclick="Modal.hide('addSlide')" class="btn btn-secondary flex-1">Cancel</button>
-                            <button onclick="EventHandlers.addSlideFromUrl()" class="btn btn-primary flex-1" style="background: #16a34a;">Add from URL</button>
+
+                        <div>
+                            <label class="form-label">Slide Size</label>
+                            <select class="form-select" id="editSizePreset" onchange="EventHandlers.onEditPresetChange()">
+                                ${presetsHTML}
+                            </select>
                         </div>
+
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label">Width (px)</label>
+                                <input class="form-control" type="number" id="editSlideWidth" value="${AppState.project.slideSize.width}">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label">Height (px)</label>
+                                <input class="form-control" type="number" id="editSlideHeight" value="${AppState.project.slideSize.height}">
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2 pt-2">
+                            <button onclick="Modal.hide('projectSettings')" class="btn btn-outline-light w-50">Cancel</button>
+                            <button onclick="EventHandlers.saveProjectSettings()" class="btn btn-primary w-50">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    },
+
+    renderKeyboardShortcutsModal() {
+        if (!AppState.modals.shortcuts) return '';
+
+        const shortcuts = [
+            { key: 'F5', action: 'Start presentation from beginning' },
+            { key: 'Shift + F5', action: 'Start from current slide' },
+            { key: '→ / Space', action: 'Next slide (presentation)' },
+            { key: '← / Backspace', action: 'Previous slide (presentation)' },
+            { key: 'Escape', action: 'Exit presentation mode' },
+            { key: 'Ctrl + S', action: 'Save/Export project' },
+        ];
+
+        return `
+            <div class="modal-overlay" onclick="Modal.hide('shortcuts')">
+                <div class="modal-content" onclick="event.stopPropagation()">
+                    <div class="d-flex align-items-center justify-content-between mb-3">
+                        <h5 class="mb-0">Keyboard Shortcuts</h5>
+                        <button class="btn btn-sm btn-outline-light" onclick="Modal.hide('shortcuts')">✕</button>
+                    </div>
+
+                    <div class="shortcuts-list">
+                        ${shortcuts.map(s => `
+                            <div class="d-flex justify-content-between align-items-center py-2 border-bottom border-secondary">
+                                <span class="text-secondary">${s.action}</span>
+                                <kbd class="bg-dark px-2 py-1 rounded small">${s.key}</kbd>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="d-grid mt-3">
+                        <button onclick="Modal.hide('shortcuts')" class="btn btn-outline-secondary">Close</button>
                     </div>
                 </div>
             </div>

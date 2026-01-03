@@ -7,8 +7,16 @@ const AppState = {
     },
     modals: {
         newProject: false,
-        addSlide: false
-    }
+        addSlide: false,
+        projectSettings: false,
+        shortcuts: false
+    },
+    presentation: {
+        active: false,
+        currentSlide: 0
+    },
+    editingSlideId: null,
+    selectedSlideId: null
 };
 
 const PRESET_SIZES = [
