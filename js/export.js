@@ -94,6 +94,7 @@ const ExportManager = {
                     canvasWidth: width * 2,
                     canvasHeight: height * 2,
                     pixelRatio: 1,
+                    quality: 0.85,
                     useCorsCredentials: true
                 });
 
