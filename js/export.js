@@ -96,19 +96,19 @@ const ExportManager = {
                     pixelRatio: 1,
                     cacheBust: false,
                     type: 'image/jpeg',
-                    quality: 0.7
+                    quality: 0.5
                 });
-
+/*
                 const compressedBlob = await imageCompression(blob, {
                     maxSizeMB: 0.5,
                     maxWidthOrHeight: Math.max(width, height) * 1.5,
                     useWebWorker: true
                 });
-
+*/
                 const dataUrl = await new Promise((resolve) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(reader.result);
-                    reader.readAsDataURL(compressedBlob);
+                    reader.readAsDataURL(blob);
                 });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
