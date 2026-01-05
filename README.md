@@ -98,8 +98,7 @@ webslider/
 
 - **Bootstrap 5.3** - UI framework (via cdnjs)
 - **jsPDF** - PDF generation (via cdnjs)
-- **html2canvas** - HTML to image conversion (via cdnjs)
-- **Vanilla JavaScript** - No framework dependencies
+- **html-to-image** - HTML to image conversion
 
 ## 📋 Slide Size Presets
 
