@@ -90,11 +90,11 @@ const ExportManager = {
 
                 await wait(100);
 
-                const dataUrl = await htmlToImage.toPng(iframe, {
-                    width,
-                    height,
+                const dataUrl = await htmlToImage.toPng(doc.body, {
+                    canvasWidth: width * 2,
+                    canvasHeight: height * 2,
                     pixelRatio: 2,
-                    cacheBust: false,
+                    useCorsCredentials: true
                 });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
