@@ -93,7 +93,8 @@ const ExportManager = {
                 const dataUrl = await htmlToImage.toPng(doc.body, {
                     canvasWidth: width * 2,
                     canvasHeight: height * 2,
-                    pixelRatio: 2,
+                    pixelRatio: 1,
+                    quality: 0.5,
                     useCorsCredentials: true
                 });
 
