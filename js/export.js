@@ -93,7 +93,7 @@ const ExportManager = {
                 const dataUrl = await htmlToImage.toJpeg(doc.body, {
                     canvasWidth: width * 2,
                     canvasHeight: height * 2,
-                    pixelRatio: 2,
+                    pixelRatio: 1,
                     useCorsCredentials: true
                 });
 
