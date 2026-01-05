@@ -54,45 +54,8 @@ const ExportManager = {
         const originalCaptureStyle = captureHost.getAttribute('style') || '';
         const wait = (ms) => new Promise(r => setTimeout(r, ms));
 
-        const sanitizeOklchColors = (doc, root) => {
-            const win = doc.defaultView;
-            if (!win) return;
-
-            const probe = doc.createElement('div');
-            probe.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;';
-            doc.body.appendChild(probe);
-
-            const toRgb = (val) => {
-                try {
-                    probe.style.color = '';
-                    probe.style.color = val;
-                    return win.getComputedStyle(probe).color || val;
-                } catch {
-                    return val;
-                }
-            };
-
-            const props = [
-                'color', 'backgroundColor', 'borderTopColor', 'borderRightColor',
-                'borderBottomColor', 'borderLeftColor', 'outlineColor', 
-                'textDecorationColor', 'caretColor'
-            ];
-
-            root.querySelectorAll('*').forEach(el => {
-                const cs = win.getComputedStyle(el);
-                props.forEach(prop => {
-                    const val = cs[prop];
-                    if (typeof val === 'string' && val.includes('oklch(')) {
-                        el.style[prop] = toRgb(val);
-                    }
-                });
-            });
-
-            doc.body.removeChild(probe);
-        };
-
         try {
-            captureHost.style.cssText = `position:fixed;left:0;top:0;width:${width}px;height:${height}px;z-index:9998;overflow:hidden;background:#ffffff;`;
+            captureHost.style.cssText = `position:fixed;left:0;top:0;width:${width}px;height:${height}px;z-index:9998;overflow:hidden;`;
 
             for (let i = 0; i < slides.length; i++) {
                 const slide = slides[i];
@@ -125,15 +88,13 @@ const ExportManager = {
                     if (doc.fonts && doc.fonts.ready) await doc.fonts.ready;
                 } catch {}
 
-                sanitizeOklchColors(doc, doc.body);
                 await wait(100);
 
                 const dataUrl = await htmlToImage.toPng(doc.body, {
-                    canvasWidth: width,
-                    canvasHeight: height,
+                    canvasWidth: width * 2,
+                    canvasHeight: height * 2,
                     pixelRatio: 2,
-                    useCorsCredentials: true,
-                    backgroundColor: '#ffffff'
+                    useCorsCredentials: true
                 });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
