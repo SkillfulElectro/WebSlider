@@ -95,7 +95,7 @@ const ExportManager = {
                     height,
                     pixelRatio: 1,
                     cacheBust: false,
-                    quality: 0.5
+                    quality: 0.85
                 });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
