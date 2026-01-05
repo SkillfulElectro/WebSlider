@@ -90,15 +90,16 @@ const ExportManager = {
 
                 await wait(100);
 
-                const dataUrl = await htmlToImage.toPng(iframe, {
+                const dataUrl = await htmlToImage.toJpeg(iframe, {
                     width,
                     height,
-                    pixelRatio: 2,
+                    pixelRatio: 1,
                     cacheBust: false,
+                    quality: 0.85
                 });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
-                pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
+                pdf.addImage(dataUrl, 'JPEG', 0, 0, width, height);
             }
 
             pdf.save(`${AppState.project.name}.pdf`);
