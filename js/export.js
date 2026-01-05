@@ -128,18 +128,16 @@ const ExportManager = {
                 sanitizeOklchColors(doc, doc.body);
                 await wait(100);
 
-                const canvas = await html2canvas(doc.body, {
-                    width,
-                    height,
-                    scale: 2,
-                    useCORS: true,
-                    allowTaint: true,
-                    backgroundColor: '#ffffff',
-                    logging: false
+                const dataUrl = await htmlToImage.toPng(doc.body, {
+                    canvasWidth: width,
+                    canvasHeight: height,
+                    pixelRatio: 2,
+                    useCorsCredentials: true,
+                    backgroundColor: '#ffffff'
                 });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
-                pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
+                pdf.addImage(dataUrl, 'PNG', 0, 0, width, height);
             }
 
             pdf.save(`${AppState.project.name}.pdf`);
