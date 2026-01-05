@@ -90,12 +90,25 @@ const ExportManager = {
 
                 await wait(100);
 
-                const dataUrl = await htmlToImage.toJpeg(iframe, {
+                const blob = await htmlToImage.toBlob(iframe, {
                     width,
                     height,
                     pixelRatio: 1,
                     cacheBust: false,
-                    quality: 0.85
+                    type: 'image/jpeg',
+                    quality: 0.7
+                });
+
+                const compressedBlob = await imageCompression(blob, {
+                    maxSizeMB: 0.5,
+                    maxWidthOrHeight: Math.max(width, height) * 1.5,
+                    useWebWorker: true
+                });
+
+                const dataUrl = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result);
+                    reader.readAsDataURL(compressedBlob);
                 });
 
                 if (i > 0) pdf.addPage([width, height], orientation);
