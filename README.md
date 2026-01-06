@@ -48,30 +48,6 @@ webslider/
 
 ```
 
-## 📂 Using Example Slides
-
-The `example/` directory contains 5 ready-to-use slide folders. To use them:
-
-1. Open WebSlider and create a new project
-2. Click **"+ Add Slide"**
-3. Choose **"Folder with Assets"**
-4. Select one of the slide folders (e.g., `slide1`)
-5. Repeat for each slide you want to add
-
-Each example slide demonstrates different features:
-- **slide1**: Title slide with external CSS and SVG logo
-- **slide2**: Feature grid with multiple SVG icons
-- **slide3**: Stats with animated counters (external JavaScript)
-- **slide4**: Workflow steps with arrows
-- **slide5**: Thank you / Contact with social icons
-
-### Testing Example Slides Directly
-
-You can open any example slide directly in a browser to preview it:
-1. Navigate to `example/slide1/` folder
-2. Open `index.html` in your browser
-3. The slide should display with all CSS and images working
-
 ## 🗂️ File Format
 
 ### .webslider Format (TAR Archive)
