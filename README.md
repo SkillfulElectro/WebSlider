@@ -4,7 +4,7 @@
 
 WebSlider is a browser-based presentation tool that lets you build slideshows using HTML files.
 
-![WebSlider](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![WebSlider](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
 ## ✨ Features
