@@ -119,7 +119,7 @@ ${prevSlideContent}
     prompt += `
 
 ## Output Instructions
-1. Provide ONLY the complete HTML code for the slide
+1. Provide ONLY the complete HTML code for the slide , just If needed ask for more information or other file contents
 2. Ensure the code is ready to use without modifications
 3. Include all styles inline or in <style> tags
 4. Make sure the design is visually appealing and professional
