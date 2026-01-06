@@ -2,17 +2,20 @@ let project = null;
 let currentSlide = 0;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Present mode loaded');
+    console.log('[Present] Mode loaded');
+    
+    // Register Service Worker
+    await ServiceWorkerManager.register();
     
     project = Storage.load();
     
     if (!project || project.slides.length === 0) {
-        console.log('No project found, redirecting to editor');
+        console.log('[Present] No project found, redirecting to editor');
         window.location.href = 'editor.html';
         return;
     }
 
-    console.log('Loaded project:', project.name, 'with', project.slides.length, 'slides');
+    console.log('[Present] Loaded project:', project.name, 'with', project.slides.length, 'slides');
 
     currentSlide = parseInt(Utils.getUrlParam('slide')) || 0;
     currentSlide = Math.max(0, Math.min(currentSlide, project.slides.length - 1));
@@ -27,7 +30,7 @@ async function renderSlide() {
     const { width: slideWidth, height: slideHeight } = project.slideSize;
     const total = project.slides.length;
 
-    console.log('Rendering slide', currentSlide + 1, '/', total, 'hasAssets:', slide.hasAssets);
+    console.log('[Present] Rendering slide', currentSlide + 1, '/', total, 'hasAssets:', slide.hasAssets);
 
     const controlsHeight = 58;
     const viewportWidth = window.innerWidth;
@@ -57,15 +60,16 @@ async function renderSlide() {
     `;
     container.appendChild(iframe);
 
-    let content = slide.content;
-    if (slide.hasAssets) {
-        console.log('Processing slide with assets...');
-        content = await Utils.processHtmlWithCache(currentSlide, content);
+    // Use Service Worker path for slides with assets
+    if (slide.hasAssets && ServiceWorkerManager.ready) {
+        console.log('[Present] Loading slide via SW:', CacheManager.getSlideUrl(currentSlide));
+        iframe.src = CacheManager.getSlideUrl(currentSlide);
+    } else {
+        console.log('[Present] Loading slide via document.write');
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(slide.content);
+        iframe.contentDocument.close();
     }
-
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(content);
-    iframe.contentDocument.close();
 
     document.getElementById('slideCounter').textContent = `${currentSlide + 1} / ${total}`;
     document.getElementById('btnPrev').disabled = currentSlide === 0;
