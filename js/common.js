@@ -11,7 +11,136 @@ const PRESET_SIZES = [
 ];
 
 const CACHE_NAME = 'webslider-assets-v1';
+const CACHE_PREFIX = '/webslider-cache/';
 const STORAGE_KEY = 'webslider_project';
+
+// Comprehensive MIME type mapping
+const MIME_TYPES = {
+    // Core web documents
+    'html': 'text/html; charset=utf-8',
+    'htm': 'text/html; charset=utf-8',
+    'css': 'text/css; charset=utf-8',
+    'js': 'text/javascript; charset=utf-8',
+    'mjs': 'text/javascript; charset=utf-8',
+    'cjs': 'text/javascript; charset=utf-8',
+    'json': 'application/json; charset=utf-8',
+    'map': 'application/json; charset=utf-8',
+    'xml': 'application/xml; charset=utf-8',
+    'txt': 'text/plain; charset=utf-8',
+    'csv': 'text/csv; charset=utf-8',
+    'md': 'text/markdown; charset=utf-8',
+    'yaml': 'application/yaml; charset=utf-8',
+    'yml': 'application/yaml; charset=utf-8',
+    'toml': 'application/toml; charset=utf-8',
+    'webmanifest': 'application/manifest+json; charset=utf-8',
+    
+    // Images
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'gif': 'image/gif',
+    'webp': 'image/webp',
+    'avif': 'image/avif',
+    'svg': 'image/svg+xml',
+    'ico': 'image/x-icon',
+    'bmp': 'image/bmp',
+    'tif': 'image/tiff',
+    'tiff': 'image/tiff',
+    
+    // Fonts
+    'woff': 'font/woff',
+    'woff2': 'font/woff2',
+    'ttf': 'font/ttf',
+    'otf': 'font/otf',
+    'eot': 'application/vnd.ms-fontobject',
+    
+    // Audio
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg',
+    'opus': 'audio/opus',
+    'aac': 'audio/aac',
+    'm4a': 'audio/mp4',
+    'flac': 'audio/flac',
+    
+    // Video
+    'mp4': 'video/mp4',
+    'webm': 'video/webm',
+    'ogv': 'video/ogg',
+    'mov': 'video/quicktime',
+    'm4v': 'video/mp4',
+    'mpeg': 'video/mpeg',
+    'mpg': 'video/mpeg',
+    
+    // Data / binaries / 3D / WASM
+    'wasm': 'application/wasm',
+    'bin': 'application/octet-stream',
+    'glb': 'model/gltf-binary',
+    'gltf': 'model/gltf+json',
+    'obj': 'text/plain; charset=utf-8',
+    'stl': 'model/stl',
+    'dae': 'model/vnd.collada+xml',
+    
+    // Documents
+    'pdf': 'application/pdf',
+    'rtf': 'application/rtf',
+    
+    // Archives
+    'zip': 'application/zip',
+    'tar': 'application/x-tar',
+    'gz': 'application/gzip',
+    'tgz': 'application/gzip',
+    '7z': 'application/x-7z-compressed',
+    'rar': 'application/vnd.rar'
+};
+
+// ===== SERVICE WORKER REGISTRATION =====
+const ServiceWorkerManager = {
+    registration: null,
+    ready: false,
+    
+    async register() {
+        if (!('serviceWorker' in navigator)) {
+            console.warn('Service Worker not supported');
+            return false;
+        }
+        
+        try {
+            this.registration = await navigator.serviceWorker.register('/sw.js', {
+                scope: '/'
+            });
+            console.log('[Main] Service Worker registered:', this.registration.scope);
+            
+            // Wait for the SW to be ready
+            await navigator.serviceWorker.ready;
+            this.ready = true;
+            console.log('[Main] Service Worker ready');
+            
+            return true;
+        } catch (error) {
+            console.error('[Main] Service Worker registration failed:', error);
+            return false;
+        }
+    },
+    
+    async clearCacheViaSW() {
+        if (!navigator.serviceWorker.controller) {
+            // Fallback to direct cache clear
+            return CacheManager.clear();
+        }
+        
+        return new Promise((resolve) => {
+            const messageChannel = new MessageChannel();
+            messageChannel.port1.onmessage = (event) => {
+                resolve(event.data.success);
+            };
+            navigator.serviceWorker.controller.postMessage(
+                { type: 'CLEAR_CACHE' },
+                [messageChannel.port2]
+            );
+        });
+    }
+};
 
 // ===== TAR UTILITIES =====
 const Tar = {
@@ -98,45 +227,49 @@ const CacheManager = {
     async clear() {
         try {
             await caches.delete(CACHE_NAME);
-            console.log('Cache cleared');
+            console.log('[Cache] Cleared');
         } catch (e) {
-            console.warn('Failed to clear cache:', e);
+            console.warn('[Cache] Failed to clear:', e);
         }
     },
     
-    async storeFile(slideIndex, path, content, contentType = 'application/octet-stream') {
+    async storeFile(slideIndex, path, content, contentType) {
         try {
             const cache = await caches.open(CACHE_NAME);
             // Normalize path: remove leading ./ or /
             const normalizedPath = path.replace(/^\.?\//, '');
-            // Use absolute URL with origin to ensure consistency
-            const url = new URL(`/webslider-cache/${slideIndex}/${normalizedPath}`, window.location.origin).href;
+            const url = `${CACHE_PREFIX}${slideIndex}/${normalizedPath}`;
+            
+            // Determine content type if not provided
+            if (!contentType) {
+                contentType = this.getMimeType(normalizedPath);
+            }
+            
             const response = new Response(content, { 
                 headers: { 'Content-Type': contentType }
             });
             await cache.put(url, response);
-            console.log('Stored:', url);
+            console.log('[Cache] Stored:', url, '(' + contentType + ')');
             return url;
         } catch (e) {
-            console.error('Failed to store file:', path, e);
+            console.error('[Cache] Failed to store:', path, e);
         }
     },
     
     async getFile(slideIndex, path) {
         try {
             const cache = await caches.open(CACHE_NAME);
-            // Normalize path: remove leading ./ or /
             const normalizedPath = path.replace(/^\.?\//, '');
-            const url = new URL(`/webslider-cache/${slideIndex}/${normalizedPath}`, window.location.origin).href;
+            const url = `${CACHE_PREFIX}${slideIndex}/${normalizedPath}`;
             const response = await cache.match(url);
             if (response) {
-                console.log('Found in cache:', url);
+                console.log('[Cache] Hit:', url);
             } else {
-                console.log('Not in cache:', url);
+                console.log('[Cache] Miss:', url);
             }
             return response;
         } catch (e) {
-            console.warn('Failed to get file:', path, e);
+            console.warn('[Cache] Failed to get:', path, e);
             return null;
         }
     },
@@ -145,7 +278,7 @@ const CacheManager = {
         try {
             const cache = await caches.open(CACHE_NAME);
             const keys = await cache.keys();
-            const prefix = `/webslider-cache/${slideIndex}/`;
+            const prefix = `${CACHE_PREFIX}${slideIndex}/`;
             const files = [];
             
             for (const request of keys) {
@@ -162,10 +295,10 @@ const CacheManager = {
                     }
                 }
             }
-            console.log(`Found ${files.length} files for slide ${slideIndex}`);
+            console.log(`[Cache] Found ${files.length} files for slide ${slideIndex}`);
             return files;
         } catch (e) {
-            console.warn('Failed to get files:', e);
+            console.warn('[Cache] Failed to get files:', e);
             return [];
         }
     },
@@ -174,7 +307,7 @@ const CacheManager = {
         try {
             const cache = await caches.open(CACHE_NAME);
             const keys = await cache.keys();
-            const prefix = `/webslider-cache/${slideIndex}/`;
+            const prefix = `${CACHE_PREFIX}${slideIndex}/`;
             
             for (const request of keys) {
                 const url = new URL(request.url);
@@ -182,8 +315,9 @@ const CacheManager = {
                     await cache.delete(request);
                 }
             }
+            console.log(`[Cache] Deleted assets for slide ${slideIndex}`);
         } catch (e) {
-            console.warn('Failed to delete slide assets:', e);
+            console.warn('[Cache] Failed to delete slide assets:', e);
         }
     },
     
@@ -197,16 +331,12 @@ const CacheManager = {
     
     getMimeType(filename) {
         const ext = filename.split('.').pop().toLowerCase();
-        const types = {
-            'html': 'text/html', 'htm': 'text/html', 'css': 'text/css',
-            'js': 'application/javascript', 'json': 'application/json',
-            'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
-            'gif': 'image/gif', 'svg': 'image/svg+xml', 'webp': 'image/webp',
-            'ico': 'image/x-icon', 'woff': 'font/woff', 'woff2': 'font/woff2',
-            'ttf': 'font/ttf', 'eot': 'application/vnd.ms-fontobject',
-            'mp3': 'audio/mpeg', 'mp4': 'video/mp4', 'webm': 'video/webm', 'pdf': 'application/pdf'
-        };
-        return types[ext] || 'application/octet-stream';
+        return MIME_TYPES[ext] || 'application/octet-stream';
+    },
+    
+    // Get the URL for accessing a slide's index.html via Service Worker
+    getSlideUrl(slideIndex) {
+        return `${CACHE_PREFIX}${slideIndex}/index.html`;
     }
 };
 
@@ -215,24 +345,25 @@ const Storage = {
     save(project) {
         try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
-            console.log('Project saved to localStorage');
+            console.log('[Storage] Project saved');
         } catch (e) {
-            console.error('Failed to save project:', e);
+            console.error('[Storage] Failed to save:', e);
         }
     },
     load() {
         try {
             const data = localStorage.getItem(STORAGE_KEY);
             const project = data ? JSON.parse(data) : null;
-            console.log('Project loaded from localStorage:', project ? project.name : 'null');
+            console.log('[Storage] Project loaded:', project ? project.name : 'null');
             return project;
         } catch (e) {
-            console.error('Failed to load project:', e);
+            console.error('[Storage] Failed to load:', e);
             return null;
         }
     },
     clear() {
         localStorage.removeItem(STORAGE_KEY);
+        console.log('[Storage] Cleared');
     }
 };
 
@@ -281,122 +412,5 @@ const Utils = {
     
     getUrlParam(name) {
         return new URLSearchParams(window.location.search).get(name);
-    },
-    
-    async processHtmlWithCache(slideIndex, html) {
-        console.log('Processing HTML for slide', slideIndex);
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-        const blobUrls = [];
-        
-        // Process images
-        for (const img of doc.querySelectorAll('img[src]')) {
-            const src = img.getAttribute('src');
-            if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('blob:')) {
-                const response = await CacheManager.getFile(slideIndex, src);
-                if (response) {
-                    const blob = await response.blob();
-                    const blobUrl = URL.createObjectURL(blob);
-                    blobUrls.push(blobUrl);
-                    img.setAttribute('src', blobUrl);
-                }
-            }
-        }
-        
-        // Process stylesheets
-        for (const link of doc.querySelectorAll('link[rel="stylesheet"][href]')) {
-            const href = link.getAttribute('href');
-            if (href && !href.startsWith('http') && !href.startsWith('data:')) {
-                const response = await CacheManager.getFile(slideIndex, href);
-                if (response) {
-                    let css = await response.text();
-                    css = await this.processCssUrls(slideIndex, css, href, blobUrls);
-                    const style = doc.createElement('style');
-                    style.textContent = css;
-                    link.parentNode.replaceChild(style, link);
-                }
-            }
-        }
-        
-        // Process scripts
-        for (const script of doc.querySelectorAll('script[src]')) {
-            const src = script.getAttribute('src');
-            if (src && !src.startsWith('http') && !src.startsWith('data:')) {
-                const response = await CacheManager.getFile(slideIndex, src);
-                if (response) {
-                    const js = await response.text();
-                    const newScript = doc.createElement('script');
-                    newScript.textContent = js;
-                    script.parentNode.replaceChild(newScript, script);
-                }
-            }
-        }
-        
-        // Process inline styles with url()
-        for (const el of doc.querySelectorAll('[style]')) {
-            const style = el.getAttribute('style');
-            if (style && style.includes('url(')) {
-                el.setAttribute('style', await this.processCssUrls(slideIndex, style, '', blobUrls));
-            }
-        }
-        
-        // Process style tags
-        for (const style of doc.querySelectorAll('style')) {
-            if (style.textContent.includes('url(')) {
-                style.textContent = await this.processCssUrls(slideIndex, style.textContent, '', blobUrls);
-            }
-        }
-        
-        // Process audio/video
-        for (const m of doc.querySelectorAll('audio[src], video[src], source[src]')) {
-            const src = m.getAttribute('src');
-            if (src && !src.startsWith('http') && !src.startsWith('data:') && !src.startsWith('blob:')) {
-                const response = await CacheManager.getFile(slideIndex, src);
-                if (response) {
-                    const blob = await response.blob();
-                    const blobUrl = URL.createObjectURL(blob);
-                    blobUrls.push(blobUrl);
-                    m.setAttribute('src', blobUrl);
-                }
-            }
-        }
-        
-        return '<!DOCTYPE html>\n' + doc.documentElement.outerHTML;
-    },
-    
-    async processCssUrls(slideIndex, css, basePath, blobUrls = []) {
-        const urlRegex = /url\(['"]?([^'")\s]+)['"]?\)/g;
-        let result = css;
-        const replacements = [];
-        let match;
-        
-        while ((match = urlRegex.exec(css)) !== null) {
-            const url = match[1];
-            if (!url.startsWith('http') && !url.startsWith('data:') && !url.startsWith('blob:')) {
-                // Resolve relative URL from CSS file location
-                let fullPath = url;
-                if (basePath) {
-                    const baseDir = basePath.substring(0, basePath.lastIndexOf('/'));
-                    if (url.startsWith('./')) {
-                        fullPath = baseDir ? baseDir + '/' + url.substring(2) : url.substring(2);
-                    } else if (!url.startsWith('/') && baseDir) {
-                        fullPath = baseDir + '/' + url;
-                    }
-                }
-                
-                const response = await CacheManager.getFile(slideIndex, fullPath);
-                if (response) {
-                    const blob = await response.blob();
-                    const blobUrl = URL.createObjectURL(blob);
-                    blobUrls.push(blobUrl);
-                    replacements.push({ original: match[0], replacement: `url('${blobUrl}')` });
-                }
-            }
-        }
-        
-        for (const r of replacements) {
-            result = result.replace(r.original, r.replacement);
-        }
-        return result;
     }
 };
