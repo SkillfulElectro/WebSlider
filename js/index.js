@@ -1,5 +1,8 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('Index page loaded - clearing cache and storage');
+    console.log('[Index] Page loaded - registering SW and clearing cache');
+    
+    // Register Service Worker
+    await ServiceWorkerManager.register();
     
     // Clear cache on main page load - fresh start
     await CacheManager.clear();
@@ -39,6 +42,7 @@ function renderSamples() {
             iframe.style.cssText = `width:${sample.slideSize.width}px;height:${sample.slideSize.height}px;border:none;transform:scale(${scale});transform-origin:top left;`;
             container.appendChild(iframe);
             
+            // Sample slides use inline content (no assets), so document.write is fine
             iframe.contentDocument.open();
             iframe.contentDocument.write(sample.slides[0].content);
             iframe.contentDocument.close();
@@ -78,18 +82,18 @@ function setupEventListeners() {
         if (!file) return;
 
         try {
-            console.log('Importing project:', file.name);
+            console.log('[Index] Importing project:', file.name);
             
             const buffer = await Utils.readFileAsArrayBuffer(file);
             const files = Tar.parse(buffer);
             
-            console.log('Parsed TAR with', files.length, 'files');
+            console.log('[Index] Parsed TAR with', files.length, 'files');
             
             const manifestFile = files.find(f => f.name === 'manifest.json');
             if (!manifestFile) throw new Error('Invalid project file: missing manifest');
             
             const manifest = JSON.parse(new TextDecoder().decode(manifestFile.content));
-            console.log('Manifest:', manifest);
+            console.log('[Index] Manifest:', manifest);
             
             // Clear existing cache before importing
             await CacheManager.clear();
@@ -106,7 +110,7 @@ function setupEventListeners() {
                 
                 const htmlFile = files.find(f => f.name === slidePrefix + 'index.html');
                 if (!htmlFile) {
-                    console.warn('No HTML file found for slide', i);
+                    console.warn('[Index] No HTML file found for slide', i);
                     continue;
                 }
                 
@@ -119,52 +123,66 @@ function setupEventListeners() {
                     hasAssets: false
                 };
                 
+                // Store the HTML file in cache (for SW to serve)
+                const slideIndex = project.slides.length;
+                await CacheManager.storeFile(slideIndex, 'index.html', htmlFile.content, 'text/html; charset=utf-8');
+                
                 // Find and store asset files
                 const assetFiles = files.filter(f => 
                     f.name.startsWith(slidePrefix) && f.name !== slidePrefix + 'index.html'
                 );
                 
-                console.log('Slide', i, 'has', assetFiles.length, 'assets');
+                console.log('[Index] Slide', i, 'has', assetFiles.length, 'assets');
                 
                 for (const asset of assetFiles) {
                     const relativePath = asset.name.substring(slidePrefix.length);
                     const contentType = CacheManager.getMimeType(relativePath);
-                    // Store with the current slide index in project.slides
-                    await CacheManager.storeFile(project.slides.length, relativePath, asset.content, contentType);
+                    await CacheManager.storeFile(slideIndex, relativePath, asset.content, contentType);
                 }
                 
                 slide.hasAssets = assetFiles.length > 0;
                 project.slides.push(slide);
             }
             
-            console.log('Imported project with', project.slides.length, 'slides');
+            console.log('[Index] Imported project with', project.slides.length, 'slides');
             
             Storage.save(project);
             window.location.href = 'editor.html';
         } catch (error) {
             alert('Error importing project: ' + error.message);
-            console.error('Import error:', error);
+            console.error('[Index] Import error:', error);
         }
 
         e.target.value = '';
     });
 
-    document.getElementById('samplesGrid').addEventListener('click', (e) => {
+    document.getElementById('samplesGrid').addEventListener('click', async (e) => {
         const card = e.target.closest('[data-sample]');
         if (!card) return;
 
         const index = parseInt(card.dataset.sample);
         const sample = SampleSlides.templates[index];
 
+        // For sample slides, store the HTML content in cache too
         const project = {
             name: sample.name,
             slideSize: { ...sample.slideSize },
-            slides: sample.slides.map(s => ({
+            slides: []
+        };
+
+        for (let i = 0; i < sample.slides.length; i++) {
+            const s = sample.slides[i];
+            const slide = {
                 ...s,
                 id: Utils.generateId(),
-                hasAssets: false  // Sample slides don't have external assets
-            }))
-        };
+                hasAssets: false
+            };
+            
+            // Store the HTML in cache for consistency
+            await CacheManager.storeFile(i, 'index.html', new TextEncoder().encode(s.content), 'text/html; charset=utf-8');
+            
+            project.slides.push(slide);
+        }
 
         Storage.save(project);
         window.location.href = 'editor.html';
