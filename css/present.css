@@ -1,0 +1,84 @@
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #000;
+    height: 100%;
+}
+
+/* Presentation mode */
+.presentation-mode {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.presentation-slide {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+}
+
+.presentation-slide iframe {
+    border: none;
+    transform-origin: center center;
+}
+
+.presentation-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 10px 16px;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(8px);
+    z-index: 100;
+}
+
+.slide-counter {
+    font-size: 14px;
+    min-width: 60px;
+    text-align: center;
+}
+
+/* Touch-friendly buttons */
+.presentation-controls .btn {
+    min-width: 44px;
+    min-height: 38px;
+}
+
+/* Hide controls on idle (optional, can be enabled with JS) */
+.presentation-controls.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Mobile adjustments */
+@media (max-width: 576px) {
+    .presentation-controls {
+        padding: 8px 12px;
+    }
+
+    .presentation-controls .btn {
+        padding: 6px 12px;
+        font-size: 14px;
+    }
+
+    .slide-counter {
+        font-size: 13px;
+    }
+}
+
+/* Fullscreen mode */
+.presentation-mode:fullscreen .presentation-controls {
+    padding: 16px;
+}

@@ -1,0 +1,27 @@
+/* Sample cards */
+.sample-card {
+    background: #1e293b;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 1px solid #334155;
+    transition: all 0.3s ease;
+}
+
+.sample-card:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+    border-color: #3b82f6;
+}
+
+.sample-preview {
+    position: relative;
+    overflow: hidden;
+    height: 160px;
+    background: #0f172a;
+}
+
+.sample-preview iframe {
+    pointer-events: none;
+    transform-origin: top left;
+}

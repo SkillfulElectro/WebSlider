@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Editor - WebSlider</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/html-to-image@latest/dist/html-to-image.js"></script>
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/editor.css">
+</head>
+<body class="bg-dark text-white">
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark bg-dark border-bottom border-secondary fixed-top">
+        <div class="container-fluid px-2 px-md-3">
+            <!-- Left side -->
+            <div class="d-flex align-items-center gap-2 gap-md-3 navbar-left">
+                <a href="index.html" class="btn btn-outline-secondary btn-sm" id="btnHome">
+                    <span class="d-none d-sm-inline">← Home</span>
+                    <span class="d-sm-none">←</span>
+                </a>
+                <div class="vr text-secondary d-none d-md-block"></div>
+                <div class="project-info">
+                    <div class="fw-semibold text-truncate" id="projectTitle">Untitled</div>
+                    <div class="text-secondary project-meta d-none d-sm-block" id="projectInfo"></div>
+                </div>
+                <button class="btn btn-sm btn-link text-secondary p-0 ms-1 d-none d-sm-inline" data-bs-toggle="modal" data-bs-target="#settingsModal" title="Settings">⚙️</button>
+            </div>
+
+            <!-- Right side - Desktop -->
+            <div class="d-none d-md-flex align-items-center gap-2">
+                <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#shortcutsModal" title="Shortcuts">⌨️</button>
+                <button class="btn btn-success btn-sm" id="btnPresent">▶️ Present</button>
+                <div class="vr text-secondary mx-1"></div>
+                <button class="btn btn-outline-light btn-sm" id="btnSave">💾 Save</button>
+                <button class="btn btn-danger btn-sm" id="btnPDF">📄 PDF</button>
+            </div>
+
+            <!-- Right side - Mobile -->
+            <div class="d-flex d-md-none align-items-center gap-1">
+                <button class="btn btn-success btn-sm" id="btnPresentMobile">▶️</button>
+                <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        ⋮
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-dark">
+                        <li><a class="dropdown-item" href="#" id="btnSettingsMobile">⚙️ Settings</a></li>
+                        <li><a class="dropdown-item" href="#" id="btnSaveMobile">💾 Save Project</a></li>
+                        <li><a class="dropdown-item" href="#" id="btnPDFMobile">📄 Export PDF</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#shortcutsModal">⌨️ Shortcuts</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- App Layout -->
+    <div class="app-layout">
+        <!-- Sidebar - Desktop -->
+        <div class="sidebar-left d-none d-md-flex">
+            <div class="sidebar-header">
+                <span class="fw-medium">Slides</span>
+                <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addSlideModal">+</button>
+            </div>
+            <div class="thumbnails-container" id="thumbnails"></div>
+        </div>
+
+        <!-- Main Canvas -->
+        <div class="main-canvas" id="mainCanvas">
+            <div id="mainSlideArea"></div>
+            <div id="slideActions" class="slide-actions d-flex gap-2 justify-content-center mt-3 flex-wrap"></div>
+        </div>
+
+        <!-- Bottom Bar - Mobile -->
+        <div class="bottom-bar d-md-none">
+            <div class="bottom-bar-header">
+                <span class="fw-medium small">Slides</span>
+                <button class="btn btn-sm btn-primary py-0 px-2" data-bs-toggle="modal" data-bs-target="#addSlideModal">+</button>
+            </div>
+            <div class="thumbnails-horizontal" id="thumbnailsMobile"></div>
+        </div>
+    </div>
+
+    <!-- Add Slide Modal -->
+    <div class="modal fade" id="addSlideModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark-custom border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title" id="addSlideTitle">Add New Slide</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="upload-area" id="uploadArea">
+                        <div class="text-center py-4">
+                            <div class="upload-icon mb-3">
+                                <svg width="48" height="48" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="margin: 0 auto; opacity: 0.6;">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+                                </svg>
+                            </div>
+                            <p class="mb-1 fw-medium">Drop HTML file here or click to browse</p>
+                            <p class="text-secondary small mb-0">Supports .html and .htm files</p>
+                        </div>
+                    </div>
+                    <input type="file" id="htmlFileInput" accept=".html,.htm" style="display:none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark-custom border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Project Settings</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Project Name</label>
+                        <input type="text" class="form-control" id="editProjectName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Slide Size</label>
+                        <select class="form-select" id="editSizePreset"></select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label class="form-label">Width (px)</label>
+                            <input type="number" class="form-control" id="editSlideWidth">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label">Height (px)</label>
+                            <input type="number" class="form-control" id="editSlideHeight">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="btnSaveSettings">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shortcuts Modal -->
+    <div class="modal fade" id="shortcutsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark-custom border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Keyboard Shortcuts</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Start presentation</span>
+                        <kbd class="bg-dark px-2 py-1 rounded small">F5</kbd>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Start from current slide</span>
+                        <kbd class="bg-dark px-2 py-1 rounded small">Shift + F5</kbd>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Next slide (presentation)</span>
+                        <kbd class="bg-dark px-2 py-1 rounded small">→ / Space</kbd>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Previous slide (presentation)</span>
+                        <kbd class="bg-dark px-2 py-1 rounded small">← / Backspace</kbd>
+                    </div>
+                    <div class="d-flex justify-content-between py-2 border-bottom border-secondary">
+                        <span class="text-secondary">Exit presentation</span>
+                        <kbd class="bg-dark px-2 py-1 rounded small">Escape</kbd>
+                    </div>
+                    <div class="d-flex justify-content-between py-2">
+                        <span class="text-secondary">Save/Export project</span>
+                        <kbd class="bg-dark px-2 py-1 rounded small">Ctrl + S</kbd>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Capture Container -->
+    <div id="pdf-capture"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/js/bootstrap.bundle.min.js"></script>
+    <script src="js/common.js"></script>
+    <script src="js/editor.js"></script>
+</body>
+</html>

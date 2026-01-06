@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Presentation - WebSlider</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.8/css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/common.css">
+    <link rel="stylesheet" href="css/present.css">
+</head>
+<body>
+    <div class="presentation-mode">
+        <div class="presentation-slide" id="slideContainer"></div>
+        
+        <div class="presentation-controls" id="controls">
+            <button class="btn btn-dark btn-sm" id="btnPrev">
+                <span class="d-none d-sm-inline">← Prev</span>
+                <span class="d-sm-none">←</span>
+            </button>
+            <span class="text-light mx-2 mx-sm-3 slide-counter" id="slideCounter">1 / 1</span>
+            <button class="btn btn-dark btn-sm" id="btnNext">
+                <span class="d-none d-sm-inline">Next →</span>
+                <span class="d-sm-none">→</span>
+            </button>
+            <a href="editor.html" class="btn btn-outline-light btn-sm ms-2 ms-sm-4" id="btnExit">
+                <span class="d-none d-sm-inline">✕ Exit</span>
+                <span class="d-sm-none">✕</span>
+            </a>
+        </div>
+    </div>
+
+    <script src="js/common.js"></script>
+    <script src="js/present.js"></script>
+</body>
+</html>

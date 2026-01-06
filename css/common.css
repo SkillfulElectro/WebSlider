@@ -1,0 +1,111 @@
+* { box-sizing: border-box; }
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a;
+    min-height: 100vh;
+    margin: 0;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #1e293b; }
+::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* Gradient text */
+.gradient-text {
+    background: linear-gradient(135deg, #60a5fa, #a78bfa, #f472b6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Dark custom background for modals */
+.bg-dark-custom {
+    background: #1e293b !important;
+}
+
+/* Form controls dark theme */
+.form-control, .form-select {
+    background-color: #0f172a;
+    border-color: #334155;
+    color: #e2e8f0;
+}
+
+.form-control:focus, .form-select:focus {
+    background-color: #0f172a;
+    border-color: #3b82f6;
+    color: #e2e8f0;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.form-label {
+    color: #94a3b8;
+    font-size: 0.875rem;
+}
+
+/* Button adjustments */
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6, #6366f1);
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb, #4f46e5);
+}
+
+/* Slide frame */
+.slide-frame { 
+    background: white;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    overflow: hidden;
+    border-radius: 8px;
+}
+
+.slide-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+/* Upload area */
+.upload-area {
+    border: 2px dashed #475569;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: rgba(51, 65, 85, 0.3);
+}
+
+.upload-area:hover,
+.upload-area.drag-over {
+    border-color: #3b82f6;
+    background: rgba(59, 130, 246, 0.1);
+}
+
+/* Keyboard shortcut styling */
+kbd {
+    font-family: inherit;
+    font-size: 0.8rem;
+}
+
+/* PDF Loading overlay */
+.pdf-loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    color: #fff;
+}
+
+.pdf-loading-content {
+    text-align: center;
+}
+
+.pdf-loading-content p {
+    font-size: 18px;
+    margin: 0;
+}
