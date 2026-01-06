@@ -1,47 +1,47 @@
 let project = null;
 let currentSlide = 0;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Present mode loaded');
+    
     project = Storage.load();
     
     if (!project || project.slides.length === 0) {
+        console.log('No project found, redirecting to editor');
         window.location.href = 'editor.html';
         return;
     }
 
+    console.log('Loaded project:', project.name, 'with', project.slides.length, 'slides');
+
     currentSlide = parseInt(Utils.getUrlParam('slide')) || 0;
     currentSlide = Math.max(0, Math.min(currentSlide, project.slides.length - 1));
 
-    renderSlide();
+    await renderSlide();
     setupEventListeners();
 });
 
-function renderSlide() {
+async function renderSlide() {
     const container = document.getElementById('slideContainer');
     const slide = project.slides[currentSlide];
     const { width: slideWidth, height: slideHeight } = project.slideSize;
     const total = project.slides.length;
 
-    // Calculate available space (account for controls bar)
+    console.log('Rendering slide', currentSlide + 1, '/', total, 'hasAssets:', slide.hasAssets);
+
     const controlsHeight = 58;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight - controlsHeight;
 
-    // Calculate scale to fit
-    const scale = Math.min(
-        viewportWidth / slideWidth,
-        viewportHeight / slideHeight
-    );
+    const scale = Math.min(viewportWidth / slideWidth, viewportHeight / slideHeight);
 
     const displayWidth = slideWidth * scale;
     const displayHeight = slideHeight * scale;
 
-    // Set container size
     container.style.width = displayWidth + 'px';
     container.style.height = displayHeight + 'px';
     container.innerHTML = '';
 
-    // Create iframe at original slide dimensions
     const iframe = document.createElement('iframe');
     iframe.style.cssText = `
         width: ${slideWidth}px;
@@ -53,70 +53,69 @@ function renderSlide() {
         top: 50%;
         margin-left: -${slideWidth / 2}px;
         margin-top: -${slideHeight / 2}px;
+        background: white;
     `;
     container.appendChild(iframe);
 
-    // Write content
+    let content = slide.content;
+    if (slide.hasAssets) {
+        console.log('Processing slide with assets...');
+        content = await Utils.processHtmlWithCache(currentSlide, content);
+    }
+
     iframe.contentDocument.open();
-    iframe.contentDocument.write(slide.content);
+    iframe.contentDocument.write(content);
     iframe.contentDocument.close();
 
-    // Update counter and buttons
     document.getElementById('slideCounter').textContent = `${currentSlide + 1} / ${total}`;
     document.getElementById('btnPrev').disabled = currentSlide === 0;
     document.getElementById('btnNext').disabled = currentSlide === total - 1;
 }
 
-function nextSlide() {
+async function nextSlide() {
     if (currentSlide < project.slides.length - 1) {
         currentSlide++;
-        renderSlide();
+        await renderSlide();
     }
 }
 
-function prevSlide() {
+async function prevSlide() {
     if (currentSlide > 0) {
         currentSlide--;
-        renderSlide();
+        await renderSlide();
     }
 }
 
 function setupEventListeners() {
-    document.getElementById('btnPrev').addEventListener('click', prevSlide);
-    document.getElementById('btnNext').addEventListener('click', nextSlide);
+    document.getElementById('btnPrev').addEventListener('click', () => prevSlide());
+    document.getElementById('btnNext').addEventListener('click', () => nextSlide());
 
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
+    document.addEventListener('keydown', async (e) => {
         switch (e.key) {
             case 'ArrowRight':
             case ' ':
             case 'Enter':
             case 'PageDown':
                 e.preventDefault();
-                nextSlide();
+                await nextSlide();
                 break;
-
             case 'ArrowLeft':
             case 'Backspace':
             case 'PageUp':
                 e.preventDefault();
-                prevSlide();
+                await prevSlide();
                 break;
-
             case 'Escape':
                 window.location.href = 'editor.html';
                 break;
-
             case 'Home':
                 currentSlide = 0;
-                renderSlide();
+                await renderSlide();
                 break;
-
             case 'End':
                 currentSlide = project.slides.length - 1;
-                renderSlide();
+                await renderSlide();
                 break;
-
             case 'f':
             case 'F':
                 toggleFullscreen();
@@ -124,51 +123,37 @@ function setupEventListeners() {
         }
     });
 
-    // Touch/swipe support
-    let touchStartX = 0;
-    let touchStartY = 0;
+    let touchStartX = 0, touchStartY = 0;
 
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
     }, { passive: true });
 
-    document.addEventListener('touchend', (e) => {
-        const touchEndX = e.changedTouches[0].clientX;
-        const touchEndY = e.changedTouches[0].clientY;
-        const diffX = touchEndX - touchStartX;
-        const diffY = touchEndY - touchStartY;
+    document.addEventListener('touchend', async (e) => {
+        const diffX = e.changedTouches[0].clientX - touchStartX;
+        const diffY = e.changedTouches[0].clientY - touchStartY;
 
-        // Only trigger if horizontal swipe is larger than vertical
         if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
             if (diffX < 0) {
-                nextSlide();
+                await nextSlide();
             } else {
-                prevSlide();
+                await prevSlide();
             }
         }
     }, { passive: true });
 
-    // Click on slide area to advance (except on controls)
-    document.getElementById('slideContainer').addEventListener('click', (e) => {
+    document.getElementById('slideContainer').addEventListener('click', async (e) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const clickX = e.clientX - rect.left;
-
-        // Left third goes back, right two-thirds goes forward
         if (clickX < rect.width / 3) {
-            prevSlide();
+            await prevSlide();
         } else {
-            nextSlide();
+            await nextSlide();
         }
     });
 
-    // Window resize
-    window.addEventListener('resize', renderSlide);
-
-    // Orientation change
-    window.addEventListener('orientationchange', () => {
-        setTimeout(renderSlide, 100);
-    });
+    window.addEventListener('resize', () => renderSlide());
 }
 
 function toggleFullscreen() {

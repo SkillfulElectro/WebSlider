@@ -23,7 +23,8 @@ p { font-size: 28px; opacity: 0.9; }
 <div class="line"></div>
 <p>Transforming Ideas into Reality</p>
 </div>
-</body></html>`
+</body></html>`,
+                    hasAssets: false
                 },
                 {
                     id: 'sample_2',
@@ -46,7 +47,8 @@ h2 { font-size: 48px; color: #ff6b6b; margin-bottom: 50px; }
 <div class="problem"><h3>Challenge 3</h3><p>Another pain point your customers face daily.</p></div>
 <div class="problem"><h3>Challenge 4</h3><p>The final key problem that needs solving.</p></div>
 </div>
-</body></html>`
+</body></html>`,
+                    hasAssets: false
                 },
                 {
                     id: 'sample_3',
@@ -65,10 +67,11 @@ h2 { font-size: 48px; color: #4ade80; margin-bottom: 40px; }
 </style></head><body>
 <h2>Our Solution</h2>
 <div class="content">
-<div class="text"><p>We provide an innovative platform that addresses all these challenges with a single, elegant solution. Our technology enables businesses to achieve more with less effort.</p></div>
+<div class="text"><p>We provide an innovative platform that addresses all these challenges with a single, elegant solution.</p></div>
 <div class="visual"><div class="circle">✓</div></div>
 </div>
-</body></html>`
+</body></html>`,
+                    hasAssets: false
                 }
             ]
         },
@@ -95,7 +98,8 @@ p { font-size: 20px; letter-spacing: 8px; opacity: 0.6; text-transform: uppercas
 <h1>PORTFOLIO</h1>
 <p>Creative Designer</p>
 </div>
-</body></html>`
+</body></html>`,
+                    hasAssets: false
                 },
                 {
                     id: 'portfolio_2',
@@ -123,7 +127,8 @@ h2 { font-size: 36px; margin-bottom: 30px; font-weight: 300; }
 <div class="item">Project 5</div>
 <div class="item">Project 6</div>
 </div>
-</body></html>`
+</body></html>`,
+                    hasAssets: false
                 }
             ]
         },
@@ -153,7 +158,8 @@ p { font-size: 18px; color: #636e72; }
 <p>Financial Overview & Analysis</p>
 <p class="date">December 2024</p>
 </div>
-</body></html>`
+</body></html>`,
+                    hasAssets: false
                 },
                 {
                     id: 'report_2',
@@ -179,7 +185,8 @@ h2 { font-size: 32px; font-weight: 300; margin-bottom: 40px; color: #2d3436; }
 <div class="stat"><div class="value">1,247</div><div class="label">New Customers</div></div>
 <div class="stat"><div class="value">98.5%</div><div class="label">Satisfaction</div></div>
 </div>
-</body></html>`
+</body></html>`,
+                    hasAssets: false
                 }
             ]
         }

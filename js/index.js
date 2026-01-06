@@ -1,4 +1,10 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('Index page loaded - clearing cache and storage');
+    
+    // Clear cache on main page load - fresh start
+    await CacheManager.clear();
+    Storage.clear();
+    
     Utils.populatePresetSelect('sizePreset');
     renderSamples();
     setupEventListeners();
@@ -20,7 +26,6 @@ function renderSamples() {
         </div>
     `).join('');
 
-    // Initialize sample previews
     setTimeout(() => {
         SampleSlides.templates.forEach((sample, index) => {
             const container = document.querySelector(`[data-sample-index="${index}"]`);
@@ -42,14 +47,12 @@ function renderSamples() {
 }
 
 function setupEventListeners() {
-    // Preset change
     document.getElementById('sizePreset').addEventListener('change', (e) => {
         const preset = PRESET_SIZES[e.target.value];
         document.getElementById('slideWidth').value = preset.width;
         document.getElementById('slideHeight').value = preset.height;
     });
 
-    // Create new project
     document.getElementById('btnCreate').addEventListener('click', () => {
         const name = document.getElementById('projectName').value || 'Untitled Project';
         const width = parseInt(document.getElementById('slideWidth').value) || 1280;
@@ -66,7 +69,6 @@ function setupEventListeners() {
         window.location.href = 'editor.html';
     });
 
-    // Import project
     document.getElementById('btnImport').addEventListener('click', () => {
         document.getElementById('importInput').click();
     });
@@ -76,23 +78,77 @@ function setupEventListeners() {
         if (!file) return;
 
         try {
-            const content = await Utils.readFileAsText(file);
-            const project = JSON.parse(content);
-
-            if (!project.slideSize || !Array.isArray(project.slides)) {
-                throw new Error('Invalid project file format');
+            console.log('Importing project:', file.name);
+            
+            const buffer = await Utils.readFileAsArrayBuffer(file);
+            const files = Tar.parse(buffer);
+            
+            console.log('Parsed TAR with', files.length, 'files');
+            
+            const manifestFile = files.find(f => f.name === 'manifest.json');
+            if (!manifestFile) throw new Error('Invalid project file: missing manifest');
+            
+            const manifest = JSON.parse(new TextDecoder().decode(manifestFile.content));
+            console.log('Manifest:', manifest);
+            
+            // Clear existing cache before importing
+            await CacheManager.clear();
+            
+            const project = {
+                name: manifest.name,
+                slideSize: manifest.slideSize,
+                slides: []
+            };
+            
+            for (let i = 0; i < manifest.slides.length; i++) {
+                const slideManifest = manifest.slides[i];
+                const slidePrefix = `slides/${i}/`;
+                
+                const htmlFile = files.find(f => f.name === slidePrefix + 'index.html');
+                if (!htmlFile) {
+                    console.warn('No HTML file found for slide', i);
+                    continue;
+                }
+                
+                const content = new TextDecoder().decode(htmlFile.content);
+                const slide = {
+                    id: Utils.generateId(),
+                    type: 'html',
+                    source: slideManifest.source || `Slide ${i + 1}`,
+                    content,
+                    hasAssets: false
+                };
+                
+                // Find and store asset files
+                const assetFiles = files.filter(f => 
+                    f.name.startsWith(slidePrefix) && f.name !== slidePrefix + 'index.html'
+                );
+                
+                console.log('Slide', i, 'has', assetFiles.length, 'assets');
+                
+                for (const asset of assetFiles) {
+                    const relativePath = asset.name.substring(slidePrefix.length);
+                    const contentType = CacheManager.getMimeType(relativePath);
+                    // Store with the current slide index in project.slides
+                    await CacheManager.storeFile(project.slides.length, relativePath, asset.content, contentType);
+                }
+                
+                slide.hasAssets = assetFiles.length > 0;
+                project.slides.push(slide);
             }
-
+            
+            console.log('Imported project with', project.slides.length, 'slides');
+            
             Storage.save(project);
             window.location.href = 'editor.html';
         } catch (error) {
             alert('Error importing project: ' + error.message);
+            console.error('Import error:', error);
         }
 
         e.target.value = '';
     });
 
-    // Sample cards
     document.getElementById('samplesGrid').addEventListener('click', (e) => {
         const card = e.target.closest('[data-sample]');
         if (!card) return;
@@ -105,7 +161,8 @@ function setupEventListeners() {
             slideSize: { ...sample.slideSize },
             slides: sample.slides.map(s => ({
                 ...s,
-                id: Utils.generateId()
+                id: Utils.generateId(),
+                hasAssets: false  // Sample slides don't have external assets
             }))
         };
 
