@@ -4,6 +4,9 @@ let editingSlideId = null;
 let aiProviders = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Register Service Worker first
+    await ServiceWorkerManager.register();
+    
     project = Storage.load();
     
     if (!project) {
@@ -29,7 +32,7 @@ async function loadAIProviders() {
         aiProviders = await response.json();
         renderAIProviders();
     } catch (error) {
-        console.warn('Could not load AI providers:', error);
+        console.warn('[Editor] Could not load AI providers:', error);
         aiProviders = [];
     }
 }
@@ -191,7 +194,7 @@ async function renderVerticalThumbnails(slideWidth, slideHeight) {
     html += `<div class="add-slide-thumb" data-bs-toggle="modal" data-bs-target="#addSlideModal">+ Add Slide</div>`;
     container.innerHTML = html;
 
-    // Render thumbnails with a small delay
+    // Render thumbnail content
     for (let i = 0; i < project.slides.length; i++) {
         const slide = project.slides[i];
         const thumbEl = container.querySelector(`[data-slide-id="${slide.id}"] .thumb-preview`);
@@ -201,14 +204,14 @@ async function renderVerticalThumbnails(slideWidth, slideHeight) {
         iframe.style.cssText = `width:${slideWidth}px;height:${slideHeight}px;transform:scale(${scale});`;
         thumbEl.appendChild(iframe);
 
-        let content = slide.content;
-        if (slide.hasAssets) {
-            content = await Utils.processHtmlWithCache(i, content);
+        // Use Service Worker path if slide has assets, otherwise use document.write
+        if (slide.hasAssets && ServiceWorkerManager.ready) {
+            iframe.src = CacheManager.getSlideUrl(i);
+        } else {
+            iframe.contentDocument.open();
+            iframe.contentDocument.write(slide.content);
+            iframe.contentDocument.close();
         }
-
-        iframe.contentDocument.open();
-        iframe.contentDocument.write(content);
-        iframe.contentDocument.close();
     }
 }
 
@@ -239,14 +242,13 @@ async function renderHorizontalThumbnails(slideWidth, slideHeight) {
         iframe.style.cssText = `width:${slideWidth}px;height:${slideHeight}px;transform:scale(${scale});`;
         thumbEl.appendChild(iframe);
 
-        let content = slide.content;
-        if (slide.hasAssets) {
-            content = await Utils.processHtmlWithCache(i, content);
+        if (slide.hasAssets && ServiceWorkerManager.ready) {
+            iframe.src = CacheManager.getSlideUrl(i);
+        } else {
+            iframe.contentDocument.open();
+            iframe.contentDocument.write(slide.content);
+            iframe.contentDocument.close();
         }
-
-        iframe.contentDocument.open();
-        iframe.contentDocument.write(content);
-        iframe.contentDocument.close();
     }
 }
 
@@ -288,14 +290,16 @@ async function renderMainSlide() {
 
     const iframe = area.querySelector('iframe');
     
-    let content = currentSlide.content;
-    if (currentSlide.hasAssets) {
-        content = await Utils.processHtmlWithCache(currentIndex, content);
+    // Use Service Worker path for slides with assets
+    if (currentSlide.hasAssets && ServiceWorkerManager.ready) {
+        console.log('[Editor] Loading slide via SW:', CacheManager.getSlideUrl(currentIndex));
+        iframe.src = CacheManager.getSlideUrl(currentIndex);
+    } else {
+        console.log('[Editor] Loading slide via document.write');
+        iframe.contentDocument.open();
+        iframe.contentDocument.write(currentSlide.content);
+        iframe.contentDocument.close();
     }
-
-    iframe.contentDocument.open();
-    iframe.contentDocument.write(content);
-    iframe.contentDocument.close();
 
     const moveUpBtn = currentIndex > 0 ? `<button class="btn btn-sm btn-outline-secondary" data-action="move-up" title="Move up">↑</button>` : '';
     const moveDownBtn = currentIndex < project.slides.length - 1 ? `<button class="btn btn-sm btn-outline-secondary" data-action="move-down" title="Move down">↓</button>` : '';
@@ -357,6 +361,7 @@ function setupEventListeners() {
                     hasAssets: currentSlide.hasAssets
                 };
                 
+                // Copy all cached files to new index
                 for (const file of files) {
                     await CacheManager.storeFile(newIndex, file.path, file.content, file.contentType);
                 }
@@ -406,6 +411,7 @@ function setupEventListeners() {
                     await CacheManager.deleteSlideAssets(currentIndex);
                     project.slides = project.slides.filter(s => s.id !== selectedSlideId);
                     
+                    // Renumber remaining slides
                     for (let i = currentIndex; i < project.slides.length; i++) {
                         await CacheManager.renumberSlides(i + 1, i);
                     }
@@ -547,24 +553,29 @@ function setupEventListeners() {
 async function handleHtmlFileUpload(file) {
     try {
         const content = await Utils.readFileAsText(file);
+        let slideIndex;
 
         if (editingSlideId) {
-            const slide = project.slides.find(s => s.id === editingSlideId);
+            slideIndex = project.slides.findIndex(s => s.id === editingSlideId);
+            const slide = project.slides[slideIndex];
             if (slide) {
                 slide.content = content;
                 slide.source = file.name;
                 slide.type = 'html';
                 // Clear assets if replacing with plain HTML
-                const slideIndex = project.slides.findIndex(s => s.id === editingSlideId);
                 await CacheManager.deleteSlideAssets(slideIndex);
                 slide.hasAssets = false;
             }
             editingSlideId = null;
         } else {
+            slideIndex = project.slides.length;
             const slide = { id: Utils.generateId(), content, type: 'html', source: file.name, hasAssets: false };
             project.slides.push(slide);
             selectedSlideId = slide.id;
         }
+
+        // Store HTML in cache for SW to serve
+        await CacheManager.storeFile(slideIndex, 'index.html', new TextEncoder().encode(content), 'text/html; charset=utf-8');
 
         Storage.save(project);
         bootstrap.Modal.getOrCreateInstance(document.getElementById('addSlideModal')).hide();
@@ -576,7 +587,7 @@ async function handleHtmlFileUpload(file) {
 
 async function handleFolderUpload(files) {
     try {
-        console.log('Uploading folder with', files.length, 'files');
+        console.log('[Editor] Uploading folder with', files.length, 'files');
         
         // Find the HTML file - prefer index.html
         let htmlFile = files.find(f => f.webkitRelativePath.endsWith('/index.html') || f.name === 'index.html');
@@ -589,16 +600,16 @@ async function handleFolderUpload(files) {
             return;
         }
 
-        console.log('Found HTML file:', htmlFile.webkitRelativePath || htmlFile.name);
+        console.log('[Editor] Found HTML file:', htmlFile.webkitRelativePath || htmlFile.name);
 
         const htmlContent = await Utils.readFileAsText(htmlFile);
         
-        // Determine the HTML file's directory relative to the root folder
-        const htmlPath = htmlFile.webkitRelativePath;
+        // Determine the root folder
         const firstPath = files[0].webkitRelativePath;
         const rootFolder = firstPath.split('/')[0];
         
         // Get HTML file directory (relative to root folder)
+        const htmlPath = htmlFile.webkitRelativePath;
         let htmlDir = '';
         if (htmlPath.startsWith(rootFolder + '/')) {
             const relativePath = htmlPath.substring(rootFolder.length + 1);
@@ -608,7 +619,7 @@ async function handleFolderUpload(files) {
             }
         }
         
-        console.log('Root folder:', rootFolder, 'HTML dir:', htmlDir);
+        console.log('[Editor] Root folder:', rootFolder, 'HTML dir:', htmlDir);
         
         let slideIndex;
         if (editingSlideId) {
@@ -625,10 +636,13 @@ async function handleFolderUpload(files) {
             selectedSlideId = slide.id;
         }
 
-        // Store all non-HTML files in cache
+        // Store HTML file
+        await CacheManager.storeFile(slideIndex, 'index.html', new TextEncoder().encode(htmlContent), 'text/html; charset=utf-8');
+
+        // Store all other files in cache
         let assetsStored = 0;
         for (const file of files) {
-            // Skip the HTML file
+            // Skip the HTML file we already stored as index.html
             if (file.webkitRelativePath === htmlFile.webkitRelativePath) continue;
             
             let relativePath = file.webkitRelativePath;
@@ -638,16 +652,11 @@ async function handleFolderUpload(files) {
             }
             
             // If HTML is in a subdirectory, adjust paths to be relative to HTML file
-            if (htmlDir) {
-                if (relativePath.startsWith(htmlDir + '/')) {
-                    relativePath = relativePath.substring(htmlDir.length + 1);
-                } else {
-                    // File is outside HTML dir - use relative path with ../
-                    // For simplicity, we still store with the original relative path
-                }
+            if (htmlDir && relativePath.startsWith(htmlDir + '/')) {
+                relativePath = relativePath.substring(htmlDir.length + 1);
             }
             
-            console.log('Storing asset:', relativePath);
+            console.log('[Editor] Storing asset:', relativePath);
             
             const buffer = await Utils.readFileAsArrayBuffer(file);
             const contentType = CacheManager.getMimeType(file.name);
@@ -655,7 +664,7 @@ async function handleFolderUpload(files) {
             assetsStored++;
         }
         
-        console.log('Stored', assetsStored, 'assets for slide', slideIndex);
+        console.log('[Editor] Stored', assetsStored, 'assets for slide', slideIndex);
 
         // Update hasAssets based on whether we actually stored anything
         const slide = project.slides[slideIndex];
@@ -667,7 +676,7 @@ async function handleFolderUpload(files) {
         await renderEditor();
     } catch (error) {
         alert('Error processing folder: ' + error.message);
-        console.error(error);
+        console.error('[Editor] Error:', error);
     }
 }
 
@@ -699,20 +708,22 @@ async function exportProject() {
             const slide = project.slides[i];
             tarFiles.push({ name: `slides/${i}/index.html`, content: slide.content, isText: true });
             
-            if (slide.hasAssets) {
-                const assets = await CacheManager.getAllFilesForSlide(i);
-                console.log(`Exporting slide ${i} with ${assets.length} assets`);
-                for (const asset of assets) {
+            // Get assets from cache (excluding index.html which we already have)
+            const assets = await CacheManager.getAllFilesForSlide(i);
+            console.log(`[Editor] Exporting slide ${i} with ${assets.length} cached files`);
+            
+            for (const asset of assets) {
+                if (asset.path !== 'index.html') {
                     tarFiles.push({ name: `slides/${i}/${asset.path}`, content: asset.content, isText: false });
                 }
             }
         }
         
-        console.log('Creating TAR with', tarFiles.length, 'files');
+        console.log('[Editor] Creating TAR with', tarFiles.length, 'files');
         const tarData = Tar.create(tarFiles);
         Utils.downloadFile(tarData, `${project.name}.webslider`, 'application/x-tar');
     } catch (error) {
-        console.error('Export error:', error);
+        console.error('[Editor] Export error:', error);
         alert('Error exporting project: ' + error.message);
     }
 }
@@ -752,31 +763,36 @@ async function exportAsPDF() {
             iframe.style.cssText = `width:${width}px;height:${height}px;border:none;`;
             captureHost.appendChild(iframe);
 
-            let content = slide.content;
-            if (slide.hasAssets) {
-                content = await Utils.processHtmlWithCache(i, content);
+            // Use SW path for slides with assets
+            if (slide.hasAssets && ServiceWorkerManager.ready) {
+                iframe.src = CacheManager.getSlideUrl(i);
+                // Wait for iframe to load
+                await new Promise((resolve, reject) => {
+                    iframe.onload = resolve;
+                    iframe.onerror = reject;
+                    setTimeout(resolve, 3000); // Timeout fallback
+                });
+            } else {
+                const doc = iframe.contentDocument;
+                doc.open();
+                doc.write(slide.content);
+                doc.close();
             }
 
-            const doc = iframe.contentDocument;
-            doc.open();
-            doc.write(content);
-            doc.close();
+            // Wait for content to be ready
+            await new Promise(r => setTimeout(r, 300));
 
-            // Wait for document to be ready
-            await new Promise(r => { 
-                const check = () => doc.readyState === 'complete' ? r() : setTimeout(check, 50); 
-                setTimeout(check, 100); 
-            });
-            
             // Wait for fonts
             try { 
-                if (doc.fonts?.ready) await doc.fonts.ready; 
+                if (iframe.contentDocument.fonts?.ready) {
+                    await iframe.contentDocument.fonts.ready; 
+                }
             } catch {}
             
             // Extra delay for rendering
             await new Promise(r => setTimeout(r, 200));
 
-            const dataUrl = await htmlToImage.toJpeg(doc.body, { 
+            const dataUrl = await htmlToImage.toJpeg(iframe.contentDocument.body, { 
                 canvasWidth: width, 
                 canvasHeight: height, 
                 pixelRatio: 1, 
@@ -789,7 +805,7 @@ async function exportAsPDF() {
 
         pdf.save(`${project.name}.pdf`);
     } catch (error) {
-        console.error('PDF Export Error:', error);
+        console.error('[Editor] PDF Export Error:', error);
         alert('Error exporting PDF: ' + error.message);
     } finally {
         captureHost.innerHTML = '';
