@@ -4,7 +4,7 @@
 
 WebSlider is a browser-based presentation tool that lets you build slideshows using HTML files, with full support for relative paths and local assets (images, CSS, JS, fonts, etc.) using the browser's Cache API.
 
-** if you had problem with converting your slides to pdf ![WebSlider2Pdf](https://github.com/SkillfulElectro/WebSlider2Pdf.git) **
+**if you had problem with converting your slides to pdf ![WebSlider2Pdf](https://github.com/SkillfulElectro/WebSlider2Pdf.git)**
 
 ![WebSlider](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
