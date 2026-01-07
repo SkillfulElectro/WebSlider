@@ -188,6 +188,8 @@ my-slide/
 
 ### Supported Asset Types
 
+there are more types , some common ones :
+
 | Type | Extensions |
 |------|------------|
 | HTML | .html, .htm |
