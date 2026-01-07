@@ -756,7 +756,7 @@ async function exportAsPDF() {
 
         for (let i = 0; i < slides.length; i++) {
             const slide = slides[i];
-            document.getElementById('exportProgress').textContent = `Exporting slide ${i + 1} of ${slides.length}...`;
+            document.getElementById('exportProgress').textContent = `<a href="https://github.com/SkillfulElectro/WebSlider2Pdf.git">If you had problem with the generated pdf</a> , Exporting slide ${i + 1} of ${slides.length}...`;
 
             captureHost.innerHTML = '';
             const iframe = document.createElement('iframe');
