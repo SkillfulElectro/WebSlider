@@ -748,7 +748,7 @@ async function exportAsPDF() {
     const captureHost = document.getElementById('pdf-capture');
     const loadingDiv = document.createElement('div');
     loadingDiv.className = 'pdf-loading-overlay';
-    loadingDiv.innerHTML = `<div class="pdf-loading-content"><div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div><p id="exportProgress">Preparing...</p></div>`;
+    loadingDiv.innerHTML = `<div class="pdf-loading-content"><div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem;"></div><p>If you had problem exporting : <a href="https://github.com/SkillfulElectro/WebSlider2Pdf/releases/tag/v1.0.0">WebSlider2Pdf</a></p><p id="exportProgress">Preparing...</p></div>`;
     document.body.appendChild(loadingDiv);
 
     try {
